@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RIASEC Interest Fit Calculator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f5f0;
+    --surface: #ffffff;
+    --surface2: #f0ede6;
+    --border: rgba(0,0,0,0.08);
+    --border-med: rgba(0,0,0,0.14);
+    --text: #1a1916;
+    --text-muted: #6b6860;
+    --text-faint: #9e9b94;
+    --accent: #2d5be3;
+    --accent-light: #eef2fd;
+    --green: #2a7d4f;
+    --green-light: #edf7f2;
+    --amber: #b85c00;
+    --amber-light: #fef4e8;
+    --red: #c0392b;
+    --red-light: #fdf0ee;
+    --R: #4a7c3f;
+    --I: #2d5be3;
+    --A: #b5447a;
+    --S: #1a7d6e;
+    --E: #b85c00;
+    --C: #5c3db8;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141412;
+      --surface: #1e1d1a;
+      --surface2: #252420;
+      --border: rgba(255,255,255,0.08);
+      --border-med: rgba(255,255,255,0.14);
+      --text: #e8e5de;
+      --text-muted: #9e9b94;
+      --text-faint: #6b6860;
+      --accent: #6b8ff0;
+      --accent-light: #1a2040;
+      --green: #4aaa78;
+      --green-light: #0d2419;
+      --amber: #e07820;
+      --amber-light: #2a1a08;
+      --red: #e05a4a;
+      --red-light: #2a100e;
+    }
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 16px; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0;
+  }
+  .page-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 2rem 1.5rem 1.5rem;
+    text-align: center;
+  }
+  .page-header h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(1.6rem, 4vw, 2.2rem);
+    font-weight: 400;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+  .page-header p {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin-top: 0.5rem;
+    max-width: 540px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.6;
+  }
+  .tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--accent-light);
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin-bottom: 0.75rem;
+  }
+  .layout {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 1.5rem 1rem 3rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    align-items: start;
+  }
+  @media (max-width: 640px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+  }
+  .panel-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 1rem;
+  }
+  .dim-row { margin-bottom: 1rem; }
+  .dim-row:last-child { margin-bottom: 0; }
+  .dim-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
+  .dim-name { font-size: 0.8rem; font-weight: 500; }
+  .dim-desc { font-size: 0.7rem; color: var(--text-faint); margin-bottom: 4px; }
+  .dim-score { font-size: 0.8rem; font-weight: 600; }
+  input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 2px solid currentColor;
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+  input[type=range].R { background: linear-gradient(to right, var(--R) var(--pct,50%), var(--border-med) var(--pct,50%)); color: var(--R); }
+  input[type=range].I { background: linear-gradient(to right, var(--I) var(--pct,50%), var(--border-med) var(--pct,50%)); color: var(--I); }
+  input[type=range].A { background: linear-gradient(to right, var(--A) var(--pct,50%), var(--border-med) var(--pct,50%)); color: var(--A); }
+  input[type=range].S { background: linear-gradient(to right, var(--S) var(--pct,50%), var(--border-med) var(--pct,50%)); color: var(--S); }
+  input[type=range].E { background: linear-gradient(to right, var(--E) var(--pct,50%), var(--border-med) var(--pct,50%)); color: var(--E); }
+  input[type=range].C { background: linear-gradient(to right, var(--C) var(--pct,50%), var(--border-med) var(--pct,50%)); color: var(--C); }
+  select {
+    width: 100%;
+    padding: 8px 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border-med);
+    border-radius: var(--radius-sm);
+    outline: none;
+    cursor: pointer;
+    margin-bottom: 0.6rem;
+  }
+  select:focus { border-color: var(--accent); }
+  .custom-row { display: flex; align-items: center; gap: 8px; margin-top: 0.25rem; }
+  .custom-row label { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; }
+  input[type=text] {
+    width: 72px;
+    padding: 7px 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border-med);
+    border-radius: var(--radius-sm);
+    outline: none;
+  }
+  input[type=text]:focus { border-color: var(--accent); }
+  .result-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    grid-column: 1 / -1;
+  }
+  .result-hidden { display: none; }
+  .fit-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 1rem; }
+  .fit-job-name { font-family: 'DM Serif Display', serif; font-size: 1.2rem; font-weight: 400; }
+  .fit-job-sub { font-size: 0.78rem; color: var(--text-faint); margin-top: 2px; }
+  .code-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+  .code-badge {
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.05em;
+    padding: 3px 10px; border-radius: 20px;
+    border: 1px solid;
+  }
+  .meter-wrap { margin: 1rem 0 0.25rem; }
+  .meter-label { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; }
+  .meter-bg { height: 10px; background: var(--surface2); border-radius: 5px; overflow: hidden; }
+  .meter-fill { height: 100%; border-radius: 5px; transition: width 0.5s cubic-bezier(.4,0,.2,1); }
+  .metrics-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 1rem 0; }
+  .metric { background: var(--surface2); border-radius: var(--radius-sm); padding: 10px 12px; text-align: center; }
+  .metric-val { font-size: 1.4rem; font-weight: 600; }
+  .metric-lbl { font-size: 0.68rem; color: var(--text-muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .interp-box {
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+    padding: 0.875rem 1rem;
+    font-size: 0.82rem;
+    line-height: 1.7;
+    color: var(--text-muted);
+    margin-top: 0.75rem;
+    border-left: 3px solid var(--border-med);
+  }
+  .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.25rem; align-items: center; }
+  @media (max-width: 500px) { .chart-row { grid-template-columns: 1fr; } }
+  .chart-wrap { display: flex; justify-content: center; }
+  .profile-list { display: flex; flex-direction: column; gap: 6px; }
+  .profile-item { display: flex; align-items: center; gap: 8px; }
+  .profile-item-label { font-size: 0.78rem; font-weight: 500; min-width: 80px; }
+  .profile-bar-wrap { flex: 1; position: relative; }
+  .profile-bar-bg { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .profile-bar-user { height: 6px; border-radius: 3px; transition: width 0.3s; }
+  .profile-bar-job { position: absolute; top: 0; height: 6px; border-radius: 3px; opacity: 0.45; pointer-events: none; }
+  .legend { display: flex; gap: 14px; justify-content: center; margin-top: 10px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.72rem; color: var(--text-muted); }
+  .legend-line { width: 14px; height: 3px; border-radius: 2px; }
+  .footer {
+    text-align: center;
+    padding: 1.5rem 1rem;
+    font-size: 0.72rem;
+    color: var(--text-faint);
+    border-top: 1px solid var(--border);
+    line-height: 1.7;
+  }
+  .your-code-display {
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem 1rem;
+    margin-top: 1rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+  .your-code-display strong { color: var(--text); font-size: 1rem; letter-spacing: 0.1em; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div class="tag">Test-agnostic · Holland RIASEC · O*NET linked</div>
+  <h1>Interest–Occupation Fit Calculator</h1>
+  <p>Enter scores from any RIASEC-based interest assessment. Select an occupation to see how closely the person's interest profile aligns with that occupational environment.</p>
+</div>
+
+<div class="layout">
+
+  <div class="panel">
+    <div class="panel-title">Step 1 — Interest profile</div>
+    <div id="sliders"></div>
+    <div class="your-code-display">
+      Derived interest code: <strong id="your-code-display">——</strong>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Step 2 — Target occupation</div>
+    <select id="category-select" onchange="filterJobs()">
+      <option value="">All categories</option>
+    </select>
+    <select id="job-select" onchange="calcFit()">
+      <option value="">— select an occupation —</option>
+    </select>
+    <div class="custom-row">
+      <label>Or enter RIASEC code manually:</label>
+      <input type="text" id="custom-code" placeholder="e.g. RIA" maxlength="3"
+        oninput="this.value=this.value.toUpperCase().replace(/[^RIASEC]/g,''); calcCustom()">
+    </div>
+    <p style="font-size:0.72rem;color:var(--text-faint);margin-top:8px;line-height:1.5;">
+      The manual code option lets you use any O*NET interest profile not listed above. O*NET codes are available at onetonline.org.
+    </p>
+  </div>
+
+  <div class="result-panel result-hidden" id="result-section">
+    <div class="panel-title">Fit analysis</div>
+    <div class="fit-header">
+      <div>
+        <div class="fit-job-name" id="job-title-display">—</div>
+        <div class="fit-job-sub" id="job-sub-display">—</div>
+      </div>
+      <div class="code-badges" id="job-badges"></div>
+    </div>
+    <div class="meter-wrap">
+      <div class="meter-label">
+        <span>Interest congruence</span>
+        <span id="fit-pct-label">—</span>
+      </div>
+      <div class="meter-bg"><div class="meter-fill" id="fit-bar" style="width:0%"></div></div>
+    </div>
+    <div class="metrics-row">
+      <div class="metric">
+        <div class="metric-val" id="fit-pct">—</div>
+        <div class="metric-lbl">Overall fit</div>
+      </div>
+      <div class="metric">
+        <div class="metric-val" id="top-match">—</div>
+        <div class="metric-lbl">Primary code match</div>
+      </div>
+      <div class="metric">
+        <div class="metric-val" id="rank-match">—</div>
+        <div class="metric-lbl">Code order match</div>
+      </div>
+    </div>
+    <div class="interp-box" id="interpretation">—</div>
+
+    <div class="chart-row">
+      <div class="chart-wrap">
+        <canvas id="radar-chart" width="260" height="220"></canvas>
+      </div>
+      <div>
+        <div class="profile-list" id="profile-bars"></div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-line" style="background:#2d5be3"></div>Your profile</div>
+          <div class="legend-item"><div class="legend-line" style="background:#b5447a;opacity:0.55"></div>Job profile</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  Based on Holland's RIASEC model (1959–1997) and O*NET interest profiles (onetonline.org).<br>
+  This tool is test-agnostic and works with any interest assessment that yields scores on the six Holland types.<br>
+  For practitioner use. Not a diagnostic instrument. Use alongside other career information and professional judgement.
+</div>
+
+<script>
+const DIMS = [
+  { code:'R', label:'Realistic',     desc:'Practical, hands-on, mechanical',       color:'var(--R)' },
+  { code:'I', label:'Investigative', desc:'Analytical, intellectual, scientific',   color:'var(--I)' },
+  { code:'A', label:'Artistic',      desc:'Creative, expressive, unstructured',     color:'var(--A)' },
+  { code:'S', label:'Social',        desc:'Helping, teaching, interpersonal',       color:'var(--S)' },
+  { code:'E', label:'Enterprising',  desc:'Leading, persuading, entrepreneurial',   color:'var(--E)' },
+  { code:'C', label:'Conventional',  desc:'Organised, detail-oriented, structured', color:'var(--C)' }
+];
+
+const JOBS = [
+  { title:'Clinical psychologist',              category:'Health & mental health',  code:'SIA', onet:'19-3031.03' },
+  { title:'Educational psychologist',           category:'Health & mental health',  code:'SIA', onet:'19-3033.00' },
+  { title:'Counselling psychologist',           category:'Health & mental health',  code:'SAI', onet:'19-3031.02' },
+  { title:'Industrial-organisational psychologist', category:'Business & management', code:'IES', onet:'19-3032.00' },
+  { title:'Career counsellor',                  category:'Health & mental health',  code:'SEA', onet:'21-1012.00' },
+  { title:'School counsellor',                  category:'Health & mental health',  code:'SAE', onet:'21-1012.00' },
+  { title:'Social worker',                      category:'Health & mental health',  code:'SEA', onet:'21-1029.00' },
+  { title:'Psychiatrist',                       category:'Health & mental health',  code:'ISA', onet:'29-1066.00' },
+  { title:'General practitioner',               category:'Health & mental health',  code:'ISR', onet:'29-1062.00' },
+  { title:'Registered nurse',                   category:'Health & mental health',  code:'SRI', onet:'29-1141.00' },
+  { title:'Occupational therapist',             category:'Health & mental health',  code:'SRI', onet:'29-1122.00' },
+  { title:'Speech-language therapist',          category:'Health & mental health',  code:'SAI', onet:'29-1127.00' },
+  { title:'Research psychologist',              category:'Research & academia',     code:'IAS', onet:'19-3039.03' },
+  { title:'Psychometrician',                    category:'Research & academia',     code:'ICR', onet:'15-2041.00' },
+  { title:'University lecturer',                category:'Research & academia',     code:'SAI', onet:'25-1066.00' },
+  { title:'Statistician',                       category:'Research & academia',     code:'ICR', onet:'15-2041.00' },
+  { title:'Software developer',                 category:'Technology',              code:'IRC', onet:'15-1252.00' },
+  { title:'Data scientist',                     category:'Technology',              code:'IRC', onet:'15-2051.00' },
+  { title:'UX/UI designer',                     category:'Technology',              code:'AIR', onet:'15-1255.00' },
+  { title:'Cybersecurity analyst',              category:'Technology',              code:'ICR', onet:'15-1212.00' },
+  { title:'AI / ML engineer',                   category:'Technology',              code:'IRC', onet:'15-2051.01' },
+  { title:'Civil engineer',                     category:'Engineering & science',   code:'RIE', onet:'17-2051.00' },
+  { title:'Mechanical engineer',                category:'Engineering & science',   code:'RIE', onet:'17-2141.00' },
+  { title:'Electrical engineer',                category:'Engineering & science',   code:'RIE', onet:'17-2071.00' },
+  { title:'Environmental scientist',            category:'Engineering & science',   code:'IRS', onet:'19-2041.00' },
+  { title:'Lawyer',                             category:'Business & management',   code:'ESA', onet:'23-1011.00' },
+  { title:'HR manager',                         category:'Business & management',   code:'SEC', onet:'11-3121.00' },
+  { title:'Marketing manager',                  category:'Business & management',   code:'EAS', onet:'11-2021.00' },
+  { title:'Accountant',                         category:'Business & management',   code:'CEI', onet:'13-2011.00' },
+  { title:'Financial analyst',                  category:'Business & management',   code:'CEI', onet:'13-2051.00' },
+  { title:'Entrepreneur / business owner',      category:'Business & management',   code:'ESR', onet:'11-1021.00' },
+  { title:'Journalist',                         category:'Arts & communication',    code:'ASE', onet:'27-3022.00' },
+  { title:'Graphic designer',                   category:'Arts & communication',    code:'AER', onet:'27-1024.00' },
+  { title:'Architect',                          category:'Arts & communication',    code:'AIR', onet:'17-1011.00' },
+  { title:'Teacher (secondary)',                category:'Education',               code:'SAE', onet:'25-2031.00' },
+  { title:'Teacher (primary)',                  category:'Education',               code:'SAC', onet:'25-2021.00' },
+  { title:'Special education teacher',          category:'Education',               code:'SAI', onet:'25-2054.00' },
+  { title:'Police officer',                     category:'Protective services',     code:'RES', onet:'33-3051.00' },
+  { title:'Firefighter',                        category:'Protective services',     code:'RES', onet:'33-2011.00' },
+  { title:'Agricultural scientist',             category:'Agriculture & environment', code:'IRS', onet:'19-1011.00' },
+  { title:'Veterinarian',                       category:'Agriculture & environment', code:'IRS', onet:'29-1131.00' },
+];
+
+const vals = { R:5, I:5, A:5, S:5, E:5, C:5 };
+let radarChart = null;
+
+function buildSliders() {
+  const c = document.getElementById('sliders');
+  DIMS.forEach(d => {
+    const pct = ((5-1)/(10-1)*100).toFixed(1);
+    c.innerHTML += `
+      <div class="dim-row">
+        <div class="dim-header">
+          <span class="dim-name" style="color:${d.color}">${d.code} &mdash; ${d.label}</span>
+          <span class="dim-score" style="color:${d.color}" id="val-${d.code}">5</span>
+        </div>
+        <div class="dim-desc">${d.desc}</div>
+        <input type="range" class="${d.code}" min="1" max="10" value="5" step="1"
+          style="--pct:${pct}%" id="sl-${d.code}"
+          oninput="updateVal('${d.code}', this.value)">
+      </div>`;
+  });
+}
+
+function updateVal(code, v) {
+  vals[code] = parseInt(v);
+  document.getElementById('val-'+code).textContent = v;
+  const pct = ((v-1)/(10-1)*100).toFixed(1);
+  document.getElementById('sl-'+code).style.setProperty('--pct', pct+'%');
+  updateYourCode();
+  calcFit();
+}
+
+function updateYourCode() {
+  const norm = getNorm();
+  const top = getTopCodes(norm, 3).join('');
+  document.getElementById('your-code-display').textContent = top;
+}
+
+function getNorm() {
+  const total = Object.values(vals).reduce((a,b)=>a+b,0);
+  const n = {};
+  DIMS.forEach(d => n[d.code] = total > 0 ? vals[d.code]/total : 1/6);
+  return n;
+}
+
+function getTopCodes(norm, n) {
+  return Object.entries(norm).sort((a,b)=>b[1]-a[1]).slice(0,n).map(x=>x[0]);
+}
+
+function codeToNorm(code) {
+  const n = {};
+  DIMS.forEach(d => n[d.code] = 0.08);
+  const bonus = [0.38, 0.26, 0.14];
+  [...code].forEach((c,i) => { if(n[c]!==undefined && i<3) n[c] = 0.08 + bonus[i]; });
+  const t = Object.values(n).reduce((a,b)=>a+b,0);
+  Object.keys(n).forEach(k => n[k] /= t);
+  return n;
+}
+
+function cosineSim(a, b) {
+  const keys = Object.keys(a);
+  const dot = keys.reduce((s,k)=>s+a[k]*b[k],0);
+  const ma = Math.sqrt(keys.reduce((s,k)=>s+a[k]*a[k],0));
+  const mb = Math.sqrt(keys.reduce((s,k)=>s+b[k]*b[k],0));
+  return ma && mb ? dot/(ma*mb) : 0;
+}
+
+function buildCategories() {
+  const cats = [...new Set(JOBS.map(j=>j.category))].sort();
+  const sel = document.getElementById('category-select');
+  cats.forEach(c => sel.innerHTML += `<option value="${c}">${c}</option>`);
+}
+
+function filterJobs() {
+  const cat = document.getElementById('category-select').value;
+  const sel = document.getElementById('job-select');
+  sel.innerHTML = '<option value="">— select an occupation —</option>';
+  JOBS.filter(j => !cat || j.category===cat)
+    .sort((a,b)=>a.title.localeCompare(b.title))
+    .forEach(j => sel.innerHTML += `<option value="${j.title}">${j.title} (${j.code})</option>`);
+  calcFit();
+}
+
+function calcFit() {
+  const sel = document.getElementById('job-select').value;
+  const customVal = document.getElementById('custom-code').value.trim();
+  if (!sel && !customVal) { document.getElementById('result-section').classList.add('result-hidden'); return; }
+
+  let jobCode, jobTitle, jobCategory, onetCode;
+  if (sel) {
+    const job = JOBS.find(j=>j.title===sel);
+    if (!job) return;
+    jobCode = job.code; jobTitle = job.title; jobCategory = job.category; onetCode = job.onet;
+    document.getElementById('custom-code').value = '';
+  } else {
+    if (customVal.length < 1) return;
+    jobCode = customVal;
+    jobTitle = 'Custom code: ' + jobCode;
+    jobCategory = 'User-defined';
+    onetCode = null;
+  }
+
+  const norm = getNorm();
+  const jobNorm = codeToNorm(jobCode);
+  const sim = cosineSim(norm, jobNorm);
+  const fitPct = Math.round(Math.min(sim * 115, 100));
+
+  const topUser = getTopCodes(norm, 3).join('');
+  const topMatch = topUser[0] === jobCode[0] ? 'Yes' : 'No';
+  let orderMatches = 0;
+  [...jobCode].forEach((c,i) => { if(topUser[i]===c) orderMatches++; });
+  const rankMatch = orderMatches + '/3';
+
+  document.getElementById('result-section').classList.remove('result-hidden');
+  document.getElementById('job-title-display').textContent = jobTitle;
+  document.getElementById('job-sub-display').textContent =
+    jobCategory + (onetCode ? ' · O*NET ' + onetCode : '');
+
+  const badgeEl = document.getElementById('job-badges');
+  badgeEl.innerHTML = '';
+  const dimColors = { R:'var(--R)',I:'var(--I)',A:'var(--A)',S:'var(--S)',E:'var(--E)',C:'var(--C)' };
+  const dimNames = { R:'Realistic',I:'Investigative',A:'Artistic',S:'Social',E:'Enterprising',C:'Conventional' };
+  [...jobCode].forEach((c,i) => {
+    const sizes = ['0.8rem','0.73rem','0.67rem'];
+    badgeEl.innerHTML += `<span class="code-badge" style="color:${dimColors[c]};border-color:${dimColors[c]};font-size:${sizes[i]||'0.67rem'};opacity:${1-i*0.15}">${c} — ${dimNames[c]}</span>`;
+  });
+
+  const barColor = fitPct >= 75 ? 'var(--green)' : fitPct >= 50 ? 'var(--amber)' : 'var(--red)';
+  const bar = document.getElementById('fit-bar');
+  bar.style.width = fitPct+'%';
+  bar.style.background = barColor;
+
+  const pctEl = document.getElementById('fit-pct');
+  pctEl.textContent = fitPct+'%';
+  pctEl.style.color = barColor;
+  document.getElementById('fit-pct-label').textContent = fitPct+'%';
+  document.getElementById('fit-pct-label').style.color = barColor;
+
+  const topMatchEl = document.getElementById('top-match');
+  topMatchEl.textContent = topMatch;
+  topMatchEl.style.color = topMatch==='Yes' ? 'var(--green)' : 'var(--red)';
+  document.getElementById('rank-match').textContent = rankMatch;
+
+  let interp = '';
+  if (fitPct >= 80) {
+    interp = `Strong congruence between this person's top interest code (${topUser}) and the ${jobCode} profile of ${jobTitle}. Holland's theory predicts higher job satisfaction, greater vocational stability, and stronger performance where person–environment fit is high. This profile supports pursuing this occupational direction.`;
+  } else if (fitPct >= 60) {
+    interp = `Moderate congruence between the person's profile (${topUser}) and the ${jobCode} environment of ${jobTitle}. There is meaningful overlap, though some demands of the role may align less well with the person's dominant interests. Explore which aspects of the role are most intrinsically motivating for this individual.`;
+  } else if (fitPct >= 40) {
+    interp = `Low–moderate congruence. The person's profile (${topUser}) differs notably from the ${jobCode} environment typical of ${jobTitle}. Holland's theory does not preclude success here, but practitioners should explore whether skills, values, extrinsic rewards, or environmental factors compensate for lower interest alignment.`;
+  } else {
+    interp = `Low congruence. The person's top interests (${topUser}) diverge substantially from the ${jobCode} environment of ${jobTitle}. Research links low congruence with reduced satisfaction and vocational stability over time. This warrants a thorough discussion with the client — not a prescription, but an important data point for career planning.`;
+  }
+  document.getElementById('interpretation').textContent = interp;
+
+  drawRadar(norm, jobNorm);
+  drawBars(norm, jobNorm);
+}
+
+function calcCustom() {
+  document.getElementById('job-select').value = '';
+  calcFit();
+}
+
+function drawRadar(userNorm, jobNorm) {
+  const labels = DIMS.map(d => d.code);
+  const userData = DIMS.map(d => Math.round(userNorm[d.code]*100));
+  const jobData  = DIMS.map(d => Math.round(jobNorm[d.code]*100));
+  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
+  const tickColor = isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)';
+  const ctx = document.getElementById('radar-chart').getContext('2d');
+  if (radarChart) radarChart.destroy();
+  radarChart = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels,
+      datasets: [
+        { label:'Your profile', data:userData, borderColor:'#2d5be3', backgroundColor:'rgba(45,91,227,0.1)', borderWidth:2, pointRadius:3, pointBackgroundColor:'#2d5be3' },
+        { label:'Job profile',  data:jobData,  borderColor:'#b5447a', backgroundColor:'rgba(181,68,122,0.08)', borderWidth:2, pointRadius:3, pointBackgroundColor:'#b5447a', borderDash:[4,3] }
+      ]
+    },
+    options: {
+      responsive:false, animation:{ duration:400 },
+      plugins:{ legend:{ display:false } },
+      scales:{ r:{
+        min:0, max:45,
+        angleLines:{ color:gridColor },
+        grid:{ color:gridColor },
+        ticks:{ display:false },
+        pointLabels:{ font:{ family:"'DM Sans', sans-serif", size:12 }, color:tickColor }
+      }}
+    }
+  });
+}
+
+function drawBars(userNorm, jobNorm) {
+  const container = document.getElementById('profile-bars');
+  container.innerHTML = '';
+  const dimColors = { R:'var(--R)',I:'var(--I)',A:'var(--A)',S:'var(--S)',E:'var(--E)',C:'var(--C)' };
+  DIMS.forEach(d => {
+    const uPct = Math.round(userNorm[d.code]*100);
+    const jPct = Math.round(jobNorm[d.code]*100);
+    container.innerHTML += `
+      <div class="profile-item">
+        <span class="profile-item-label" style="color:${dimColors[d.code]}">${d.code} ${d.label.slice(0,4)}.</span>
+        <div class="profile-bar-wrap">
+          <div class="profile-bar-bg">
+            <div class="profile-bar-user" style="width:${uPct*2.2}%;max-width:100%;background:${dimColors[d.code]}"></div>
+          </div>
+          <div class="profile-bar-job" style="width:${jPct*2.2}%;max-width:100%;background:${dimColors[d.code]};top:0;left:0;height:6px;border-radius:3px;"></div>
+        </div>
+        <span style="font-size:0.72rem;color:var(--text-faint);min-width:28px;text-align:right">${uPct}%</span>
+      </div>`;
+  });
+}
+
+buildSliders();
+buildCategories();
+filterJobs();
+updateYourCode();
+</script>
+</body>
+</html>
